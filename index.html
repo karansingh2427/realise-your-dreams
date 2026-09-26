@@ -210,21 +210,26 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
       <p>Write as much or as little as feels right. Your draft is kept in this browser as you type, so you can come back to it.</p>
     </div>
 
-    <form id="form" novalidate>
+    <form id="form" novalidate method="POST" enctype="multipart/form-data" target="hiddenFrame"
+      action="https://formsubmit.co/karandeep.singh2427@gmail.com">
+      <input type="hidden" name="_subject" id="fsSubject" value="Runway application">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_next" id="fsNext" value="">
       <fieldset>
         <legend><h3><span class="step">1 of 4</span> About you</h3></legend>
         <div class="row">
-          <div class="field"><label for="name">Your name</label><input id="name" name="name" type="text" autocomplete="name" required></div>
-          <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email"></div>
+          <div class="field"><label for="name">Your name</label><input id="name" name="Name" type="text" autocomplete="name" required></div>
+          <div class="field"><label for="email">Email</label><input id="email" name="Email" type="email" autocomplete="email"></div>
         </div>
         <div class="field">
           <span id="cvlabel" style="font-weight:500;font-size:.95rem">CV</span>
           <label class="drop" id="drop" for="cv">
-            <input id="cv" type="file" accept=".pdf,.doc,.docx,.odt,.txt" aria-labelledby="cvlabel">
+            <input id="cv" name="attachment" type="file" accept=".pdf,.doc,.docx,.odt,.txt" aria-labelledby="cvlabel">
             <span id="cvname"><strong>Choose a file</strong> or drop it here</span>
             <span class="hint">PDF or Word, up to 4 MB</span>
           </label>
-          <div class="field"><label for="cvlink" class="hint">Or paste a link to it (Drive, Dropbox, LinkedIn)</label><input id="cvlink" type="url" placeholder="https://"></div>
+          <div class="field"><label for="cvlink" class="hint">Or paste a link to it (Drive, Dropbox, LinkedIn)</label><input id="cvlink" name="CV link" type="url" placeholder="https://"></div>
         </div>
       </fieldset>
 
@@ -232,12 +237,12 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
         <legend><h3><span class="step">2 of 4</span> Personal statement</h3></legend>
         <div class="field">
           <label for="why">Why do you want to do this, and why now?</label>
-          <textarea id="why" data-count></textarea><span class="count" data-for="why"></span>
+          <textarea id="why" name="Why this, why now" data-count></textarea><span class="count" data-for="why"></span>
         </div>
         <div class="field">
           <label for="goals">How would this time help you reach your goals?</label>
           <span class="hint">Where do you want to be in a few years, and how does this runway move you toward it?</span>
-          <textarea id="goals" data-count></textarea><span class="count" data-for="goals"></span>
+          <textarea id="goals" name="How it helps my goals" data-count></textarea><span class="count" data-for="goals"></span>
         </div>
       </fieldset>
 
@@ -246,17 +251,17 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
         <div class="field">
           <label for="idea">The idea</label>
           <span class="hint">What is it, who is it for, and what problem does it solve? A rough answer is fine.</span>
-          <textarea id="idea" data-count></textarea><span class="count" data-for="idea"></span>
+          <textarea id="idea" name="The idea" data-count></textarea><span class="count" data-for="idea"></span>
         </div>
         <div class="field">
           <label for="month1">Your first month</label>
           <span class="hint">What would you do in the first 30 days? Think concrete: people to talk to, things to test, skills to pick up.</span>
-          <textarea id="month1" data-count></textarea><span class="count" data-for="month1"></span>
+          <textarea id="month1" name="First month" data-count></textarea><span class="count" data-for="month1"></span>
         </div>
         <div class="field">
           <label for="plan90">Your 90-day plan</label>
           <span class="hint">What would the next 90 days look like, and how will you know by the end whether to keep going?</span>
-          <textarea id="plan90" data-count style="min-height:160px"></textarea><span class="count" data-for="plan90"></span>
+          <textarea id="plan90" name="90-day plan" data-count style="min-height:160px"></textarea><span class="count" data-for="plan90"></span>
         </div>
       </fieldset>
 
@@ -277,9 +282,11 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
           <label for="cadenceSel">Check-in rhythm</label>
           <select id="cadenceSel"><option value="1">Every month</option><option value="2" selected>Every two months</option></select>
         </div>
+        <input type="hidden" name="Runway" id="fsRunway">
+        <input type="hidden" name="Check-in rhythm" id="fsCadence">
         <div class="field">
           <label for="support">Anything else you'd want besides money?</label>
-          <textarea id="support" style="min-height:90px" placeholder="Optional"></textarea>
+          <textarea id="support" name="Other support" style="min-height:90px" placeholder="Optional"></textarea>
         </div>
       </fieldset>
 
@@ -288,6 +295,7 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
         <span class="msg" id="msg" role="status"></span>
       </div>
     </form>
+    <iframe name="hiddenFrame" id="hiddenFrame" style="display:none" title="Submission handler" aria-hidden="true"></iframe>
   </section>
 
 </div>
@@ -403,51 +411,46 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
   setCadence(+$("#cadenceSel").value || 1, true);
   updateTotal(); updateCounts();
 
-  const DEST_EMAIL = "karandeep.singh2427@gmail.com";
+  // Submission goes through a real (non-AJAX) form POST to a hidden iframe, since
+  // FormSubmit's AJAX endpoint doesn't reliably deliver file attachments — only a
+  // native multipart form submission does.
+  const sentMark = "#sent-" + Date.now();
+  let confirmed = false, pendingMsg = null;
+  $("#hiddenFrame").addEventListener("load", () => {
+    if (!pendingMsg) return;
+    try {
+      const href = $("#hiddenFrame").contentWindow.location.href;
+      if (href.indexOf(sentMark) !== -1){ confirmed = true; showSent(pendingMsg); }
+    } catch(e){ /* still on formsubmit.co, cross-origin — ignore and wait */ }
+  });
+  function showSent(a){
+    const btn = $("#submit"), msg = $("#msg");
+    btn.disabled = false;
+    msg.textContent = "Sent. Your application for " + fmt(a.monthly) + " a month over " + a.months + (a.months === 1 ? " month" : " months") + " has been received.";
+    msg.className = "msg ok";
+    store.set("ks-draft", null);
+    $("#form").reset();
+    cvFile = null; $("#drop").classList.remove("has"); $("#cvname").innerHTML = "<strong>Choose a file</strong> or drop it here";
+    updateTotal(); updateCounts(); setCadence(2, true);
+    pendingMsg = null;
+  }
 
-  $("#form").addEventListener("submit", async e => {
-    e.preventDefault();
+  $("#form").addEventListener("submit", e => {
     const a = collect(), msg = $("#msg");
     msg.className = "msg";
-    if (!a.name.trim()){ msg.textContent = "Add your name so we know who it's from."; msg.className = "msg err"; $("#name").focus(); return; }
-    if (!a.why.trim() && !a.idea.trim()){ msg.textContent = "Write a little about why, or about the idea, before sending."; msg.className = "msg err"; $("#why").focus(); return; }
+    if (!a.name.trim()){ e.preventDefault(); msg.textContent = "Add your name so we know who it's from."; msg.className = "msg err"; $("#name").focus(); return; }
+    if (!a.why.trim() && !a.idea.trim()){ e.preventDefault(); msg.textContent = "Write a little about why, or about the idea, before sending."; msg.className = "msg err"; $("#why").focus(); return; }
     a.monthly = +a.monthly; a.months = +a.months;
-    const btn = $("#submit"); btn.disabled = true; msg.textContent = "Sending…";
-    try {
-      const fd = new FormData();
-      fd.append("_subject", "Runway application: " + a.name);
-      fd.append("_template", "table");
-      fd.append("_captcha", "false");
-      fd.append("Name", a.name);
-      fd.append("Email", a.email || "-");
-      fd.append("Why this, why now", a.why || "-");
-      fd.append("How it helps my goals", a.goals || "-");
-      fd.append("The idea", a.idea || "-");
-      fd.append("First month", a.month1 || "-");
-      fd.append("90-day plan", a.plan90 || "-");
-      fd.append("Runway", fmt(a.monthly) + " x " + a.months + " months = " + fmt(a.monthly * a.months) + ", starting " + (a.start || "-"));
-      fd.append("Check-ins", a.cadenceSel === "2" ? "Every two months" : "Every month");
-      fd.append("Other support", a.support || "-");
-      if (cvFile) fd.append("attachment", cvFile, cvFile.name);
-      else if (a.cvlink) fd.append("CV link", a.cvlink);
 
-      const res = await fetch("https://formsubmit.co/ajax/" + DEST_EMAIL, {
-        method: "POST",
-        headers: { "Accept": "application/json" },
-        body: fd
-      });
-      if (!res.ok) throw new Error("submit failed");
-      btn.disabled = false;
-      msg.textContent = "Sent. Your application for " + fmt(a.monthly) + " a month over " + a.months + (a.months === 1 ? " month" : " months") + " has been received.";
-      msg.className = "msg ok";
-      store.set("ks-draft", null);
-      $("#form").reset();
-      cvFile = null; $("#drop").classList.remove("has"); $("#cvname").innerHTML = "<strong>Choose a file</strong> or drop it here";
-    } catch(err){
-      btn.disabled = false;
-      msg.textContent = "This page couldn't send your application online. Please try again in a moment, or reach out directly so we can sort it another way.";
-      msg.className = "msg err";
-    }
+    $("#fsSubject").value = "Runway application: " + a.name;
+    $("#fsRunway").value = fmt(a.monthly) + " x " + a.months + (a.months === 1 ? " month" : " months") + " = " + fmt(a.monthly * a.months) + ", starting " + (a.start || "-");
+    $("#fsCadence").value = a.cadenceSel === "2" ? "Every two months" : "Every month";
+    $("#fsNext").value = location.href.split("#")[0] + sentMark;
+
+    confirmed = false; pendingMsg = a;
+    const btn = $("#submit"); btn.disabled = true; msg.textContent = "Sending…";
+    setTimeout(() => { if (!confirmed) showSent(a); }, 4000);
+    // form now submits natively (multipart/form-data) into the hidden iframe
   });
 })();
 </script>
