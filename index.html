@@ -276,7 +276,7 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
 (function(){
   const $ = s => document.querySelector(s);
   const fmt = n => "€" + Number(n).toLocaleString("en-US");
-  const MAX_CV = 4 * 1024 * 1024, CHUNK = 180 * 1024;
+  const MAX_CV = 4 * 1024 * 1024;
   const store = {
     get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
     set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -361,12 +361,7 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
   setCadence(+$("#cadenceSel").value || 1, true);
   updateTotal(); updateCounts();
 
-  function readB64(f){
-    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
-  }
-
-  let dbP = null;
-  function getDb(){ if (!dbP) dbP = window.claude?.use ? window.claude.use("db") : Promise.resolve(null); return dbP; }
+  const DEST_EMAIL = "karandeep.singh2427@gmail.com";
 
   $("#form").addEventListener("submit", async e => {
     e.preventDefault();
@@ -375,28 +370,40 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
     if (!a.name.trim()){ msg.textContent = "Add your name so we know who it's from."; msg.className = "msg err"; $("#name").focus(); return; }
     if (!a.why.trim() && !a.idea.trim()){ msg.textContent = "Write a little about why, or about the idea, before sending."; msg.className = "msg err"; $("#why").focus(); return; }
     a.monthly = +a.monthly; a.months = +a.months;
-    if (cvFile) a.cvName = cvFile.name;
     const btn = $("#submit"); btn.disabled = true; msg.textContent = "Sending…";
     try {
-      const db = await getDb();
-      if (!db) throw new Error("no db");
-      const ref = db.collection("applications").doc();
-      let chunks = 0;
-      if (cvFile){
-        const b64 = await readB64(cvFile);
-        chunks = Math.ceil(b64.length / CHUNK);
-        for (let i = 0; i < chunks; i++){
-          await db.collection("cv").doc(ref.id + "_" + i).set({ app: ref.id, i, part: b64.slice(i * CHUNK, (i + 1) * CHUNK) });
-        }
-      }
-      await ref.set(Object.assign({}, a, { cvType: cvFile ? cvFile.type : "", cvChunks: chunks, submittedAt: new Date().toISOString() }));
+      const fd = new FormData();
+      fd.append("_subject", "Runway application: " + a.name);
+      fd.append("_template", "table");
+      fd.append("_captcha", "false");
+      fd.append("Name", a.name);
+      fd.append("Email", a.email || "-");
+      fd.append("Why this, why now", a.why || "-");
+      fd.append("How it helps my goals", a.goals || "-");
+      fd.append("The idea", a.idea || "-");
+      fd.append("First month", a.month1 || "-");
+      fd.append("90-day plan", a.plan90 || "-");
+      fd.append("Runway", fmt(a.monthly) + " x " + a.months + " months = " + fmt(a.monthly * a.months) + ", starting " + (a.start || "-"));
+      fd.append("Check-ins", a.cadenceSel === "2" ? "Every two months" : "Every month");
+      fd.append("Other support", a.support || "-");
+      if (cvFile) fd.append("attachment", cvFile, cvFile.name);
+      else if (a.cvlink) fd.append("CV link", a.cvlink);
+
+      const res = await fetch("https://formsubmit.co/ajax/" + DEST_EMAIL, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: fd
+      });
+      if (!res.ok) throw new Error("submit failed");
       btn.disabled = false;
       msg.textContent = "Sent. Your application for " + fmt(a.monthly) + " a month over " + a.months + (a.months === 1 ? " month" : " months") + " has been received.";
       msg.className = "msg ok";
       store.set("ks-draft", null);
+      $("#form").reset();
+      cvFile = null; $("#drop").classList.remove("has"); $("#cvname").innerHTML = "<strong>Choose a file</strong> or drop it here";
     } catch(err){
       btn.disabled = false;
-      msg.textContent = "This page couldn't save your application online. Please send it by message or email directly, with your CV attached.";
+      msg.textContent = "This page couldn't send your application online. Please email it to " + DEST_EMAIL + " directly, with your CV attached.";
       msg.className = "msg err";
     }
   });
