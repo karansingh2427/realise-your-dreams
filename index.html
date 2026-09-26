@@ -112,9 +112,6 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
 .msg{font-size:.9rem}
 .msg.err{color:var(--bad)}
 .msg.ok{color:var(--good)}
-.done{background:var(--saffron-soft);border-radius:6px;padding:26px;display:grid;gap:10px}
-.done h3{font-size:1.6rem}
-.copybox{width:100%;min-height:200px;font:13px/1.5 ui-monospace,Menlo,monospace}
 
 .admin{border-top:1px solid var(--line);margin-top:56px}
 .app{background:var(--surface);border:1px solid var(--line);border-radius:6px}
@@ -269,18 +266,6 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
         <span class="msg" id="msg" role="status"></span>
       </div>
     </form>
-
-    <div class="done" id="done" hidden>
-      <h3>Sent. Thank you.</h3>
-      <p id="doneText">Karandeep has your application. We'll sit down and talk it through together.</p>
-    </div>
-
-    <div class="done" id="fallback" hidden>
-      <h3>Almost there</h3>
-      <p>This page couldn't save your application online. Copy it below and send it to Karandeep by message or email, with your CV attached.</p>
-      <textarea class="copybox" id="copybox" readonly></textarea>
-      <div class="submitbar"><button class="btn" type="button" id="copyBtn">Copy application</button><span class="msg" id="copyMsg"></span></div>
-    </div>
   </section>
 
   <section class="admin" id="admin" hidden>
@@ -425,23 +410,15 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
         }
       }
       await ref.set(Object.assign({}, a, { cvType: cvFile ? cvFile.type : "", cvChunks: chunks, submittedAt: new Date().toISOString() }));
-      $("#form").hidden = true; $("#done").hidden = false;
-      $("#doneText").textContent = "Karandeep has your application for " + fmt(a.monthly) + " a month over " + a.months + (a.months === 1 ? " month" : " months") + ". We'll sit down and talk it through together.";
+      btn.disabled = false;
+      msg.textContent = "Sent. Karandeep has your application for " + fmt(a.monthly) + " a month over " + a.months + (a.months === 1 ? " month" : " months") + ".";
+      msg.className = "msg ok";
       store.set("ks-draft", null);
     } catch(err){
-      btn.disabled = false; msg.textContent = "";
-      $("#copybox").value = asText(a);
-      $("#fallback").hidden = false;
-      $("#fallback").scrollIntoView({ behavior: "smooth", block: "start" });
+      btn.disabled = false;
+      msg.textContent = "This page couldn't save your application online. Please message or email Karandeep directly with your CV attached.";
+      msg.className = "msg err";
     }
-  });
-
-  $("#copyBtn").addEventListener("click", () => {
-    const box = $("#copybox");
-    const ok = () => { $("#copyMsg").textContent = "Copied."; $("#copyMsg").className = "msg ok"; };
-    try {
-      navigator.clipboard.writeText(box.value).then(ok, () => { box.select(); $("#copyMsg").textContent = "Selected. Press Ctrl+C or ⌘C to copy."; });
-    } catch(e){ box.select(); $("#copyMsg").textContent = "Selected. Press Ctrl+C or ⌘C to copy."; }
   });
 
   // Owner view
