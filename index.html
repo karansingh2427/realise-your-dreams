@@ -43,6 +43,14 @@ a{color:var(--indigo)}
 .toplinks a{text-decoration:none;color:var(--muted)}
 .toplinks a:hover{color:var(--ink)}
 
+.deadline{margin-top:22px;background:var(--indigo);color:var(--bg);border-radius:6px;padding:20px clamp(18px,4vw,28px);display:grid;gap:12px}
+.deadline .eyebrow{color:var(--bg);opacity:.85}
+.deadline .hint{color:var(--bg);opacity:.85}
+.countdown{display:flex;gap:clamp(14px,4vw,28px);flex-wrap:wrap}
+.cd{display:grid;justify-items:center;gap:2px;min-width:52px}
+.cd strong{font-family:var(--display);font-weight:500;font-size:clamp(1.5rem,5vw,2rem);font-variant-numeric:tabular-nums;line-height:1}
+.cd span{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
+
 .hero{padding-block:40px 28px;display:grid;gap:20px}
 .hero .lede{font-size:1.15rem;color:var(--muted);max-width:60ch}
 .funder{font-size:.95rem;border-left:3px solid var(--saffron);padding-left:12px;max-width:60ch}
@@ -125,6 +133,17 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
     <nav class="toplinks"><a href="#about">About</a><a href="#terms">Terms</a><a href="#checkins">Check-ins</a><a href="#apply">Apply</a></nav>
   </header>
 
+  <div class="deadline" id="deadline">
+    <span class="eyebrow">Autumn round · closes 30 September</span>
+    <div class="countdown" id="countdown" aria-live="polite">
+      <div class="cd"><strong id="cdDays">00</strong><span>days</span></div>
+      <div class="cd"><strong id="cdHours">00</strong><span>hours</span></div>
+      <div class="cd"><strong id="cdMins">00</strong><span>min</span></div>
+      <div class="cd"><strong id="cdSecs">00</strong><span>sec</span></div>
+    </div>
+    <p class="hint">Funding runs twice a year, spring and autumn. This is the autumn round — applications close 30 September.</p>
+  </div>
+
   <div class="hero">
     <span class="eyebrow">The Runway · six months of focused time</span>
     <h1>Time to build <em>your</em> thing.</h1>
@@ -136,6 +155,7 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
       <span class="eyebrow">What this is</span>
       <h2>A starter kit for your dream, not a loan</h2>
       <p>Realize Your Dreams exists to help people actually start the thing they've been carrying around in their head. Most ideas don't die for lack of talent or effort — they die because the person behind them has to spend all their time and energy on the mundane stuff: rent, food, bills, just getting by. This is a starting kit for that gap. A bit of runway, upfront, so the everyday cost of living isn't the reason a dream never gets a real shot. Not a loan, not an investment, not help in the sense of charity — just enough support to buy back your time, so you can spend it building and realizing your dream instead of figuring out how to survive while you try to.</p>
+      <p>Funding runs twice a year, in spring and in autumn. The autumn round is open now, with applications closing 30 September; the spring round opens again after that.</p>
     </div>
   </section>
 
@@ -277,6 +297,28 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
   const $ = s => document.querySelector(s);
   const fmt = n => "€" + Number(n).toLocaleString("en-US");
   const MAX_CV = 4 * 1024 * 1024;
+
+  // Deadline countdown
+  (function(){
+    const DEADLINE = new Date(2026, 8, 30, 23, 59, 59); // 30 September, local time
+    const pad = n => String(n).padStart(2, "0");
+    function tick(){
+      const diff = DEADLINE - new Date();
+      if (diff <= 0){
+        $("#countdown").innerHTML = "";
+        $("#deadline p.hint").textContent = "The autumn round is now closed. The spring round opens next.";
+        clearInterval(timer);
+        return;
+      }
+      const s = Math.floor(diff / 1000);
+      $("#cdDays").textContent = pad(Math.floor(s / 86400));
+      $("#cdHours").textContent = pad(Math.floor(s / 3600) % 24);
+      $("#cdMins").textContent = pad(Math.floor(s / 60) % 60);
+      $("#cdSecs").textContent = pad(s % 60);
+    }
+    tick();
+    const timer = setInterval(tick, 1000);
+  })();
   const store = {
     get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
     set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -403,7 +445,7 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
       cvFile = null; $("#drop").classList.remove("has"); $("#cvname").innerHTML = "<strong>Choose a file</strong> or drop it here";
     } catch(err){
       btn.disabled = false;
-      msg.textContent = "This page couldn't send your application online. Please email it to " + DEST_EMAIL + " directly, with your CV attached.";
+      msg.textContent = "This page couldn't send your application online. Please try again in a moment, or reach out directly so we can sort it another way.";
       msg.className = "msg err";
     }
   });
