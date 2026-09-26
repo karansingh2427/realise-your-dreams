@@ -113,12 +113,6 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
 .msg.err{color:var(--bad)}
 .msg.ok{color:var(--good)}
 
-.admin{border-top:1px solid var(--line);margin-top:56px}
-.app{background:var(--surface);border:1px solid var(--line);border-radius:6px}
-.app summary{padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.app .body{padding:0 18px 18px;display:grid;gap:14px}
-.app dt{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
-.app dd{margin:2px 0 0;white-space:pre-wrap}
 @media (prefers-reduced-motion:no-preference){.btn,.cadence button{transition:background .15s,color .15s}}
 </style>
 
@@ -276,14 +270,6 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
     </form>
   </section>
 
-  <section class="admin" id="admin" hidden>
-    <div class="sechead">
-      <span class="eyebrow">Only visible to you</span>
-      <h2>Applications received</h2>
-    </div>
-    <div id="apps" style="display:grid;gap:10px"></div>
-  </section>
-
 </div>
 
 <script>
@@ -375,20 +361,6 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
   setCadence(+$("#cadenceSel").value || 1, true);
   updateTotal(); updateCounts();
 
-  function asText(a){
-    return [
-      "REALISE YOUR DREAMS · APPLICATION",
-      "Name: " + a.name, "Email: " + (a.email || "-"),
-      "CV: " + (a.cvName ? a.cvName + " (attached separately)" : a.cvlink || "-"),
-      "", "WHY THIS, WHY NOW", a.why, "", "HOW IT HELPS MY GOALS", a.goals,
-      "", "THE IDEA", a.idea, "", "FIRST MONTH", a.month1,
-      "", "90-DAY PLAN", a.plan90,
-      "", "RUNWAY", fmt(a.monthly) + " × " + a.months + " months = " + fmt(a.monthly * a.months) + ", starting " + a.start,
-      "Check-ins: " + (a.cadenceSel === "2" ? "every two months" : "every month"),
-      "", "OTHER SUPPORT", a.support || "-"
-    ].join("\n");
-  }
-
   function readB64(f){
     return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
   }
@@ -428,49 +400,5 @@ input[type=range]{width:100%;accent-color:var(--indigo)}
       msg.className = "msg err";
     }
   });
-
-  // Owner view
-  (async () => {
-    if (!window.claude?.use) return;
-    const user = await window.claude.use("user");
-    if (!user || !(await user.isOwner())) return;
-    const db = await getDb();
-    if (!db) return;
-    const downloads = await window.claude.use("downloads");
-    $("#admin").hidden = false;
-    db.collection("applications").orderBy("submittedAt", "desc").onSnapshot(snap => {
-      const box = $("#apps"); box.innerHTML = "";
-      if (snap.empty){ box.innerHTML = '<p class="hint">Nothing yet. Submissions will appear here as soon as they arrive.</p>'; return; }
-      snap.docs.forEach(d => {
-        const a = d.data();
-        const el = document.createElement("details"); el.className = "app";
-        const sum = document.createElement("summary");
-        const who = document.createElement("strong"); who.textContent = a.name;
-        const when = document.createElement("span"); when.className = "hint";
-        when.textContent = new Date(a.submittedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) + " · " + fmt(a.monthly) + " × " + a.months;
-        sum.append(who, when); el.appendChild(sum);
-        const body = document.createElement("div"); body.className = "body";
-        const pre = document.createElement("dd"); pre.textContent = asText(a);
-        body.appendChild(pre);
-        if (a.cvChunks && downloads){
-          const b = document.createElement("button"); b.className = "btn ghost"; b.type = "button"; b.textContent = "Save CV (" + a.cvName + ")";
-          b.addEventListener("click", async () => {
-            try {
-              let s = "";
-              for (let i = 0; i < a.cvChunks; i++){ const c = await db.doc("cv/" + d.id + "_" + i).get(); s += c.data().part; }
-              const bin = atob(s), bytes = new Uint8Array(bin.length);
-              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-              await downloads.save({ filename: a.cvName, data: new Blob([bytes], { type: a.cvType || "application/octet-stream" }) });
-            } catch(e){ b.textContent = "Couldn't save the CV"; }
-          });
-          body.appendChild(b);
-        } else if (a.cvlink){
-          const l = document.createElement("a"); l.href = a.cvlink; l.target = "_blank"; l.rel = "noopener"; l.textContent = "Open CV link";
-          body.appendChild(l);
-        }
-        el.appendChild(body); box.appendChild(el);
-      });
-    });
-  })();
 })();
 </script>
